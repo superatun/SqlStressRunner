@@ -1,0 +1,44 @@
+{
+  "ConnectionSettings": {
+    "Server": "localhost",
+    "Database": "TestDB",
+    "Username": "sa",
+    "Password": "",
+    "UseIntegratedSecurity": true,
+    "TrustServerCertificate": true,
+    "ConnectionTimeout": 30
+  },
+  "TestSettings": {
+    "InitialQuery": "SELECT TOP 100 UserId, ProductId, Quantity FROM TestData",
+    "StoredProcedure1": "EXEC CreateOrder @UserId, @ProductId, @Quantity",
+    "StoredProcedure2": "EXEC ProcessOrder @OrderId",
+    "CommandTimeout": 30,
+    "MaxDegreeOfParallelism": 4,
+    "TotalIterations": 1000,
+    "RecycleDataset": true,
+    "LogToDatabase": false,
+    "LogTableName": "StressTestLog"
+  },
+  "ParameterMappings": [
+    {
+      "ColumnName": "UserId",
+      "Sp1ParameterName": "@UserId",
+      "Sp2ParameterName": ""
+    },
+    {
+      "ColumnName": "ProductId",
+      "Sp1ParameterName": "@ProductId",
+      "Sp2ParameterName": ""
+    },
+    {
+      "ColumnName": "Quantity",
+      "Sp1ParameterName": "@Quantity",
+      "Sp2ParameterName": ""
+    },
+    {
+      "ColumnName": "OrderId",
+      "Sp1ParameterName": "",
+      "Sp2ParameterName": "@OrderId"
+    }
+  ]
+}

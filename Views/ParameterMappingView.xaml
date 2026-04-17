@@ -1,0 +1,37 @@
+<UserControl x:Class="SqlStressRunner.Views.ParameterMappingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SqlStressRunner.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Parameter Mapping" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,20">
+            <Run Text="Map columns from your initial query to parameters in your stored procedures."/>
+            <LineBreak/>
+            <Run Text="Each stored procedure you configured will have its own column for parameter mapping."/>
+            <LineBreak/>
+            <Run Text="Leave parameter names empty if you don't want to map a column to a specific stored procedure."/>
+            <LineBreak/>
+            <Run Text="Parameter names should start with @ (e.g., @UserId, @ProductId)"/>
+        </TextBlock>
+
+        <DataGrid Grid.Row="2" 
+                  x:Name="MappingDataGrid"
+                  ItemsSource="{Binding Mappings}" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="False" 
+                  CanUserDeleteRows="False"
+                  AlternatingRowBackground="LightGray">
+        </DataGrid>
+    </Grid>
+</UserControl>

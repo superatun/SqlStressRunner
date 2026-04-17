@@ -1,0 +1,55 @@
+﻿<Window x:Class="SqlStressRunner.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SqlStressRunner"
+        xmlns:vm="clr-namespace:SqlStressRunner.ViewModels"
+        xmlns:views="clr-namespace:SqlStressRunner.Views"
+        mc:Ignorable="d"
+        Title="SQL Stress Runner" Height="700" Width="1200" WindowStartupLocation="CenterScreen">
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Menu Grid.Row="0">
+            <MenuItem Header="File">
+                <MenuItem Header="Load Configuration" Command="{Binding LoadConfigurationCommand}"/>
+                <MenuItem Header="Save Configuration" Command="{Binding SaveConfigurationCommand}"/>
+                <Separator/>
+                <MenuItem Header="Exit" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="Help">
+                <MenuItem Header="About" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <TabControl Grid.Row="1" Margin="10" SelectedIndex="{Binding SelectedTabIndex}">
+            <TabItem Header="Connection">
+                <views:ConnectionView DataContext="{Binding ConnectionViewModel}"/>
+            </TabItem>
+            <TabItem Header="Test Configuration">
+                <views:TestConfigurationView DataContext="{Binding TestConfigurationViewModel}"/>
+            </TabItem>
+            <TabItem Header="Parameter Mapping">
+                <views:ParameterMappingView DataContext="{Binding ParameterMappingViewModel}"/>
+            </TabItem>
+            <TabItem Header="Results">
+                <views:ResultsView DataContext="{Binding ResultsViewModel}"/>
+            </TabItem>
+        </TabControl>
+
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Text="SQL Stress Runner v1.0 - Ready"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
