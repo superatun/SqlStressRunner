@@ -1,14 +1,18 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Windows;
+using Microsoft.Win32;
 using SqlStressRunner.Commands;
 using SqlStressRunner.Infrastructure;
 using SqlStressRunner.Models;
+using SqlStressRunner.Services;
 
 namespace SqlStressRunner.ViewModels;
 
 public class ResultsViewModel : ViewModelBase
 {
+    private readonly ReportGenerationService _reportGenerationService = new();
     private MetricsSummary? _currentSummary;
     private ObservableCollection<IterationResult> _iterationResults = new();
     private ObservableCollection<StoredProcedureMetricSummary> _storedProcedureMetrics = new();
@@ -16,9 +20,11 @@ public class ResultsViewModel : ViewModelBase
     public ResultsViewModel()
     {
         CopyRunIdCommand = new RelayCommand(CopyRunIdToClipboard, CanCopyRunId);
+        GenerateReportCommand = new RelayCommand(GenerateReport, CanGenerateReport);
     }
 
     public RelayCommand CopyRunIdCommand { get; }
+    public RelayCommand GenerateReportCommand { get; }
 
     public MetricsSummary? CurrentSummary
     {
@@ -54,6 +60,8 @@ public class ResultsViewModel : ViewModelBase
     public void UpdateResults(MetricsSummary summary)
     {
         CurrentSummary = summary;
+        IterationResults = new ObservableCollection<IterationResult>(
+            summary.IterationResults.OrderBy(r => r.IterationNumber));
         StoredProcedureMetrics = new ObservableCollection<StoredProcedureMetricSummary>(
             summary.AverageSpDurations
                 .OrderBy(kvp => kvp.Key)
@@ -76,6 +84,7 @@ public class ResultsViewModel : ViewModelBase
         OnPropertyChanged(nameof(P95LatencyText));
         OnPropertyChanged(nameof(P99LatencyText));
         CopyRunIdCommand.RaiseCanExecuteChanged();
+        GenerateReportCommand.RaiseCanExecuteChanged();
     }
 
     private bool CanCopyRunId()
@@ -89,6 +98,51 @@ public class ResultsViewModel : ViewModelBase
         {
             Clipboard.SetText(CurrentSummary.RunId.ToString());
             MessageBox.Show("RunId copied to clipboard!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private bool CanGenerateReport()
+    {
+        return CurrentSummary != null;
+    }
+
+    private void GenerateReport()
+    {
+        if (CurrentSummary == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Save Results Report",
+                Filter = "Markdown report (*.md)|*.md|Text report (*.txt)|*.txt",
+                FileName = $"SqlStressRunner_Report_{CurrentSummary.RunId:N}.md",
+                DefaultExt = ".md",
+                AddExtension = true
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var report = _reportGenerationService.GenerateMarkdownReport(CurrentSummary);
+            File.WriteAllText(dialog.FileName, report);
+
+            MessageBox.Show($"Report generated successfully:\n{dialog.FileName}",
+                "Report Generated",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error generating report: {ex.Message}",
+                "Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 }

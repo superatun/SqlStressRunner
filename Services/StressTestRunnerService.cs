@@ -116,6 +116,7 @@ public class StressTestRunnerService
             var endTime = DateTime.UtcNow;
             var summary = _metricsService.CalculateMetrics(results.ToList(), startTime, endTime, enabledSPs.Count);
             summary.RunId = runId;
+            summary.IterationResults = results.OrderBy(r => r.IterationNumber).ToList();
 
             if (settings.LogToDatabase && _loggingService != null)
             {
@@ -130,6 +131,7 @@ public class StressTestRunnerService
             var endTime = DateTime.UtcNow;
             var summary = _metricsService.CalculateMetrics(results.ToList(), startTime, endTime, enabledSPs.Count);
             summary.RunId = runId;
+            summary.IterationResults = results.OrderBy(r => r.IterationNumber).ToList();
             progress?.Report((results.Count, settings.TotalIterations, TestRunState.Cancelled));
             return summary;
         }
@@ -138,6 +140,7 @@ public class StressTestRunnerService
             var endTime = DateTime.UtcNow;
             var summary = _metricsService.CalculateMetrics(results.ToList(), startTime, endTime, enabledSPs.Count);
             summary.RunId = runId;
+            summary.IterationResults = results.OrderBy(r => r.IterationNumber).ToList();
             progress?.Report((results.Count, settings.TotalIterations, TestRunState.Failed));
             throw;
         }

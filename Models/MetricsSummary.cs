@@ -22,6 +22,7 @@ public class MetricsSummary
 
     // New dynamic SP metrics: Key = SP Name, Value = Average Duration
     public Dictionary<string, double> AverageSpDurations { get; set; } = new();
+    public List<IterationResult> IterationResults { get; set; } = new();
 
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }

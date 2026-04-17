@@ -1,241 +1,417 @@
 # SQL Stress Runner
 
-Una aplicación de escritorio para pruebas de carga y estrés en stored procedures de SQL Server.
+A WPF desktop application for load and stress testing SQL Server stored procedures and raw SQL commands.
 
-## Características
+## Features
 
-- ✅ Interfaz gráfica WPF con patrón MVVM
-- ✅ Conexión flexible a SQL Server (Windows Auth o SQL Auth)
-- ✅ Ejecución concurrente configurable
-- ✅ Mapeo flexible de parámetros
-- ✅ Métricas detalladas (TPS, latencias, percentiles)
-- ✅ Logging opcional a base de datos
-- ✅ Persistencia de configuración
+- WPF desktop UI built with MVVM
+- Flexible SQL Server connectivity using Windows Authentication or SQL Authentication
+- Configurable concurrent execution
+- Dynamic support for multiple execution steps per iteration
+- Parameter mapping from an initial dataset into each configured command
+- Support for both stored procedures and raw SQL text commands
+- Detailed metrics including TPS, latency, P95, and P99
+- Optional database logging with per-iteration and per-command detail
+- Automatic database setup and schema migration from the Connection tab
+- Local configuration persistence
 
-## Requisitos
+## Requirements
 
 - .NET 10 SDK
-- SQL Server (cualquier versión compatible con Microsoft.Data.SqlClient)
-- Windows 10/11
+- SQL Server compatible with `Microsoft.Data.SqlClient`
+- Windows 10 or Windows 11
 
-## Instalación
+## Getting Started
 
-1. Clona el repositorio o extrae el código
-2. Abre el proyecto en Visual Studio 2022 o superior
-3. Restaura los paquetes NuGet
-4. Compila el proyecto
-5. Ejecuta la aplicación
+1. Clone the repository or extract the source code.
+2. Open the project in Visual Studio 2022 or newer.
+3. Restore NuGet packages.
+4. Build the project.
+5. Run the application.
 
-## Uso
+## How It Works
 
-### 1. Configurar Conexión
+Each test run generates a single `RunId`.
 
-En la pestaña **Connection**:
-- Ingresa los datos del servidor SQL
-- Selecciona el tipo de autenticación
-- Prueba la conexión con el botón "Test Connection"
-- Guarda la configuración
+For each iteration:
 
-### 2. Configurar Prueba
+1. A row is selected from the initial dataset.
+2. The configured commands are executed in order.
+3. Each command execution is recorded independently.
+4. If one command fails, the current iteration is marked as failed and the remaining commands in that iteration are skipped.
+5. The iteration receives its own `IterationId`.
 
-En la pestaña **Test Configuration**:
-- **Initial Query**: Escribe una query que devuelva datos para alimentar tus stored procedures
-  ```sql
-  SELECT UserId, ProductId, Quantity FROM TestData
-  ```
-- **SP1**: Primera stored procedure o SQL a ejecutar
-  ```sql
-  EXEC CreateOrder @UserId, @ProductId, @Quantity
-  ```
-- **SP2**: Segunda stored procedure o SQL a ejecutar
-  ```sql
-  EXEC ProcessOrder @OrderId
-  ```
-- Configura:
-  - Command Timeout (segundos)
-  - Max Degree of Parallelism (workers concurrentes)
-  - Total Iterations (cuántas veces ejecutar)
-  - Recycle Dataset (reusar los datos cíclicamente)
-- Opcionalmente activa "Log to Database" para guardar resultados
+This gives you a hierarchy like:
 
-Carga los datos con "Load Initial Data"
+- `RunId` -> one full stress test run
+- `IterationId` -> one iteration inside that run
+- command execution rows -> one row per stored procedure or SQL command executed inside that iteration
 
-### 3. Mapear Parámetros
+## Application Workflow
 
-En la pestaña **Parameter Mapping**:
-- Verás las columnas devueltas por tu Initial Query
-- Mapea cada columna a los parámetros de SP1 y SP2
-- Ejemplo:
-  - Column: `UserId` → SP1 Param: `@UserId` → SP2 Param: ``
-  - Column: `ProductId` → SP1 Param: `@ProductId` → SP2 Param: ``
-  - Column: `OrderId` → SP1 Param: `` → SP2 Param: `@OrderId`
+### 1. Configure the Connection
 
-### 4. Ejecutar Prueba
+In the **Connection** tab:
 
-- Regresa a **Test Configuration**
-- Haz clic en "Start Test"
-- Observa el progreso en tiempo real
-- Puedes cancelar con "Cancel Test"
+- Enter the SQL Server connection details.
+- Choose the authentication mode.
+- Use **Test Connection** to validate connectivity.
+- Use **Setup Database** to create or migrate the logging schema in the selected database.
+- Use **Save Settings** to persist the connection settings locally.
 
-### 5. Ver Resultados
+`Setup Database` is idempotent. It can be executed multiple times safely and will:
 
-En la pestaña **Results**:
-- Run ID único
-- Duración total
-- Iteraciones totales/exitosas/fallidas
-- **TPS (Transactions Per Second)**:
-  - Por iteración
-  - Por stored procedure
-- Latencias (promedio, min, max, P95, P99)
-- Duración promedio de SP1 y SP2
+- create the required logging objects if they do not exist
+- migrate supported legacy logging structures
+- keep the active schema aligned with the current version of the application
 
-## Flujo de Ejecución
+### 2. Configure the Test
 
-Para cada iteración:
-1. Se toma una fila del dataset inicial
-2. Se ejecuta SP1 con parámetros mapeados
-3. Si SP1 falla → iteración marcada como fallida, SP2 no se ejecuta
-4. Si SP1 funciona → se ejecuta SP2
-5. Si SP2 falla → iteración marcada como fallida
-6. Se registran métricas individuales
+In the **Test Configuration** tab:
 
-## Logging a Base de Datos
+- **Initial Query**: a query that returns the dataset used to feed parameters into your commands
 
-Si activas "Log to Database":
-1. Ejecuta el script `DatabaseSchema.sql` en tu base de datos
-2. Esto crea las tablas:
-   - `StressTestLog`: detalles de cada iteración
-   - `StressTestLogSummary`: resumen de cada run
-   - `vw_StressTestSummary`: vista para consultas
+Example:
 
-## Persistencia de Configuración
-
-La aplicación guarda automáticamente tu última configuración en:
-```
-%LocalAppData%\SqlStressRunner\config.json
+```sql
+SELECT UserId, ProductId, Quantity
+FROM TestData;
 ```
 
-Puedes cargarla desde el menú: File → Load Configuration
+- Add one or more execution steps.
+- Each step can be:
+  - a stored procedure call
+  - a raw SQL text command
 
-## Estructura del Proyecto
+Stored procedure example:
 
-```
-SqlStressRunner/
-├── Models/                          # Modelos de datos
-│   ├── DatabaseConnectionSettings.cs
-│   ├── StressTestSettings.cs
-│   ├── ParameterMapping.cs
-│   ├── IterationResult.cs
-│   ├── MetricsSummary.cs
-│   ├── TestRunState.cs
-│   └── AppConfiguration.cs
-├── ViewModels/                      # ViewModels MVVM
-│   ├── MainViewModel.cs
-│   ├── ConnectionViewModel.cs
-│   ├── TestConfigurationViewModel.cs
-│   ├── ParameterMappingViewModel.cs
-│   └── ResultsViewModel.cs
-├── Views/                           # Vistas XAML
-│   ├── ConnectionView.xaml
-│   ├── TestConfigurationView.xaml
-│   ├── ParameterMappingView.xaml
-│   └── ResultsView.xaml
-├── Services/                        # Lógica de negocio
-│   ├── SqlConnectionFactory.cs
-│   ├── ConnectionTestService.cs
-│   ├── InitialDataLoaderService.cs
-│   ├── StoredProcedureExecutionService.cs
-│   ├── StressTestRunnerService.cs
-│   ├── MetricsService.cs
-│   └── ResultLoggingService.cs
-├── Infrastructure/                  # Base classes y converters
-│   ├── ViewModelBase.cs
-│   └── InverseBoolConverter.cs
-├── Commands/                        # ICommand implementations
-│   ├── RelayCommand.cs
-│   └── AsyncRelayCommand.cs
-└── Helpers/                         # Utilidades
-    └── ConfigurationHelper.cs
+```sql
+EXEC CreateOrder @UserId, @ProductId, @Quantity
 ```
 
-## Definiciones de Métricas
+Raw SQL example:
 
-- **TPS por Iteración**: Iteraciones exitosas / tiempo total en segundos
-- **TPS por Stored Procedure**: (Iteraciones exitosas × 2) / tiempo total en segundos
-- **Latencia**: Tiempo total de ejecución de SP1 + SP2
-- **P95**: El 95% de las iteraciones completaron en este tiempo o menos
-- **P99**: El 99% de las iteraciones completaron en este tiempo o menos
+```sql
+UPDATE Orders
+SET LastTouchedAt = SYSUTCDATETIME()
+WHERE UserId = @UserId;
 
-## Ejemplos de Uso
+SELECT @@ROWCOUNT AS RowsAffected;
+```
 
-### Ejemplo 1: Prueba simple
+Configure:
+
+- `Command Timeout`
+- `Max Degree of Parallelism`
+- `Total Iterations`
+- `Recycle Dataset`
+- `Log to Database`
+- `Log Table Name`
+
+`Log Table Name` is treated as the base name for the logging schema, not as the name of a single table.
+
+### 3. Load the Initial Dataset
+
+Still in **Test Configuration**, use **Load Initial Data** to execute the initial query and cache the dataset in memory.
+
+### 4. Configure Parameter Mapping
+
+In the **Parameter Mapping** tab:
+
+- Map each column from the initial dataset to the parameters needed by each configured command.
+- Mappings are dynamic and tied to the configured command names.
+
+Example:
+
+- `UserId` -> `@UserId` for `CreateOrder`
+- `ProductId` -> `@ProductId` for `CreateOrder`
+- `OrderId` -> `@OrderId` for `ProcessOrder`
+
+### 5. Run the Test
+
+Back in **Test Configuration**:
+
+- Click **Start Test**
+- Monitor execution progress in real time
+- Use **Cancel Test** to stop the run if needed
+
+### 6. Review Results
+
+In the **Results** tab you can review:
+
+- the generated `RunId`
+- total duration
+- total, successful, and failed iterations
+- TPS per iteration
+- TPS per command
+- average, minimum, maximum, P95, and P99 latency
+- average duration per configured command
+
+## Logging Schema
+
+When `Log to Database` is enabled, the application writes to a normalized schema.
+
+If `Log Table Name` is set to `StressTestLog`, the active objects are:
+
+- `StressTestIterationLog`
+- `StressTestStoredProcedureLog`
+- `StressTestLogSummary`
+- `vw_StressTestSummary`
+
+Legacy objects may also appear during migration:
+
+- `StressTestLogLegacy`
+- `StressTestLogSummaryLegacy`
+
+### `StressTestIterationLog`
+
+Stores one row per iteration:
+
+- `IterationId`
+- `RunId`
+- `IterationNumber`
+- `Success`
+- `TotalDurationMs`
+- `ExecutedAt`
+- `ErrorMessage`
+
+### `StressTestStoredProcedureLog`
+
+Stores one row per executed command within an iteration:
+
+- `IterationId`
+- `RunId`
+- `IterationNumber`
+- `StoredProcedureName`
+- `StoredProcedureOrder`
+- `Success`
+- `ExecutionDurationMs`
+- `Parameters`
+- `ResponsePayload`
+- `ResponseRowCount`
+- `ResponseResultSetCount`
+- `ErrorMessage`
+- `ExecutedAt`
+
+Despite the column name `StoredProcedureName`, this table is used for both stored procedures and raw SQL commands configured in the UI.
+
+### `StressTestLogSummary`
+
+Stores one row per test run:
+
+- `RunId`
+- `TotalIterations`
+- `SuccessfulIterations`
+- `FailedIterations`
+- `TotalDurationMs`
+- `TpsPerIteration`
+- `TpsPerStoredProcedure`
+- `AverageLatencyMs`
+- `MinLatencyMs`
+- `MaxLatencyMs`
+- `P95LatencyMs`
+- `P99LatencyMs`
+- `StartTime`
+- `EndTime`
+
+## Query Examples
+
+### Get all iterations for a run
+
+```sql
+SELECT *
+FROM StressTestIterationLog
+WHERE RunId = 'YOUR-RUN-ID'
+ORDER BY IterationNumber;
+```
+
+### Get every command execution for a run
+
+```sql
+SELECT
+    RunId,
+    IterationId,
+    IterationNumber,
+    StoredProcedureOrder,
+    StoredProcedureName,
+    Success,
+    ExecutionDurationMs,
+    ResponseRowCount,
+    ResponseResultSetCount,
+    Parameters,
+    ResponsePayload,
+    ErrorMessage,
+    ExecutedAt
+FROM StressTestStoredProcedureLog
+WHERE RunId = 'YOUR-RUN-ID'
+ORDER BY IterationNumber, StoredProcedureOrder;
+```
+
+### Get the command rows for one iteration
+
+```sql
+SELECT *
+FROM StressTestStoredProcedureLog
+WHERE IterationId = 'YOUR-ITERATION-ID'
+ORDER BY StoredProcedureOrder;
+```
+
+### Get only failed command executions for a run
+
+```sql
+SELECT
+    RunId,
+    IterationNumber,
+    StoredProcedureOrder,
+    StoredProcedureName,
+    ErrorMessage,
+    Parameters,
+    ResponsePayload
+FROM StressTestStoredProcedureLog
+WHERE RunId = 'YOUR-RUN-ID'
+  AND Success = 0
+ORDER BY IterationNumber, StoredProcedureOrder;
+```
+
+### Get average duration per command for a run
+
+```sql
+SELECT
+    StoredProcedureName,
+    AVG(ExecutionDurationMs) AS AvgDurationMs
+FROM StressTestStoredProcedureLog
+WHERE RunId = 'YOUR-RUN-ID'
+GROUP BY StoredProcedureName
+ORDER BY StoredProcedureName;
+```
+
+## Metrics Definitions
+
+- **TPS per Iteration**: successful iterations divided by total execution time in seconds
+- **TPS per Stored Procedure**: successful command executions per second, based on the number of configured commands
+- **Latency**: total iteration execution time
+- **P95**: 95 percent of successful iterations completed in this time or less
+- **P99**: 99 percent of successful iterations completed in this time or less
+
+## Example Scenarios
+
+### Example 1: Stored procedures only
+
 ```sql
 -- Initial Query
-SELECT TOP 1000 CustomerId, ProductId FROM Orders
+SELECT TOP 1000 CustomerId, ProductId
+FROM Orders;
 
--- SP1
-EXEC ValidateCustomer @CustomerId
+-- Command 1
+EXEC ValidateCustomer @CustomerId;
 
--- SP2
-EXEC CheckProductStock @ProductId
+-- Command 2
+EXEC CheckProductStock @ProductId;
 ```
 
-### Ejemplo 2: Con creación de datos
+### Example 2: Mixed raw SQL and stored procedure flow
+
+```sql
+-- Initial Query
+SELECT TOP 1000 OrderId, CustomerId, Amount
+FROM PendingOrders;
+
+-- Command 1
+UPDATE Orders
+SET LastTouchedAt = SYSUTCDATETIME()
+WHERE OrderId = @OrderId;
+
+SELECT @@ROWCOUNT AS RowsAffected;
+
+-- Command 2
+EXEC ProcessPayment @OrderId, @Amount;
+```
+
+### Example 3: Generated test data
+
 ```sql
 -- Initial Query
 SELECT NEWID() AS OrderId, CustomerId, ProductId, RAND() * 100 AS Amount
-FROM Customers CROSS JOIN Products
+FROM Customers
+CROSS JOIN Products;
 
--- SP1
-EXEC CreateOrder @OrderId, @CustomerId, @ProductId, @Amount
+-- Command 1
+EXEC CreateOrder @OrderId, @CustomerId, @ProductId, @Amount;
 
--- SP2
-EXEC ProcessPayment @OrderId, @Amount
+-- Command 2
+EXEC ProcessPayment @OrderId, @Amount;
+```
+
+## Configuration Persistence
+
+The application stores the last-used configuration in:
+
+```text
+%LocalAppData%\SqlStressRunner\config.json
+```
+
+For security reasons, the password is not persisted.
+
+## Project Structure
+
+```text
+SqlStressRunner/
+|-- Models/
+|-- ViewModels/
+|-- Views/
+|-- Services/
+|-- Infrastructure/
+|-- Commands/
+|-- Helpers/
+|-- DatabaseSchema.sql
+|-- SqlStressRunner.csproj
+|-- SqlStressRunner.slnx
 ```
 
 ## Troubleshooting
 
-### Error de conexión
-- Verifica que SQL Server esté corriendo
-- Revisa el firewall
-- Confirma las credenciales
-- Asegúrate que "Trust Server Certificate" esté activado si usas certificados auto-firmados
+### Connection errors
 
-### Errores durante la prueba
-- Los errores individuales no detienen la prueba completa
-- Revisa los mensajes de error en el log
-- Verifica que tus stored procedures acepten los parámetros correctos
-- Asegúrate que el mapeo de parámetros sea correcto
+- Verify that SQL Server is running.
+- Check firewall and network access.
+- Confirm credentials and database name.
+- If needed, enable `Trust Server Certificate` for self-signed environments.
 
-### Performance lenta
-- Reduce Max Degree of Parallelism si tienes muchos errores de timeout
-- Aumenta Command Timeout
-- Verifica que tu base de datos pueda manejar la carga
+### Database setup issues
 
-## Tecnologías Utilizadas
+- Make sure the configured login has permission to create tables, indexes, views, and constraints.
+- Run **Setup Database** from the **Connection** tab before starting a logged test run.
+- Re-run **Setup Database** if you upgraded the app and need schema migration.
 
-- **.NET 10**
-- **WPF** (Windows Presentation Foundation)
-- **MVVM** (Model-View-ViewModel pattern)
-- **ADO.NET** con Microsoft.Data.SqlClient
-- **System.Text.Json** para serialización
+### Execution failures during a test
 
-## Arquitectura
+- Individual command failures do not terminate the entire run.
+- A failed command stops only the remaining commands in the current iteration.
+- Check `StressTestStoredProcedureLog.ErrorMessage` and `Parameters` for the failing row.
+- Validate parameter mappings and SQL syntax.
 
-- **Patrón MVVM**: Separación completa entre UI y lógica
-- **Async/Await**: Operaciones asíncronas para no bloquear UI
-- **Connection Pooling**: Cada worker abre su propia conexión
-- **Thread-Safe**: Uso de ConcurrentBag y Parallel.ForEachAsync
-- **Progress Reporting**: Actualización de UI sin romper MVVM
+### Slow performance
 
-## Licencia
+- Reduce `Max Degree of Parallelism` if the target database is under heavy load.
+- Increase `Command Timeout` for long-running operations.
+- Review the command-level detail in `StressTestStoredProcedureLog` to locate bottlenecks.
 
-Código libre para uso personal y comercial.
+## Technology Stack
 
-## Autor
+- .NET 10
+- WPF
+- MVVM
+- ADO.NET via `Microsoft.Data.SqlClient`
+- `System.Text.Json`
 
-Desarrollado como herramienta de pruebas de carga para SQL Server.
+## Architecture Notes
 
-## Contribuciones
+- MVVM separation between UI and application logic
+- Async execution to keep the UI responsive
+- Per-worker SQL connections
+- Parallel iteration processing using `Parallel.ForEachAsync`
+- Thread-safe in-memory result collection before summary calculation
 
-Pull requests son bienvenidos. Para cambios mayores, abre un issue primero.
+## License
+
+Free to use for personal and commercial purposes.
